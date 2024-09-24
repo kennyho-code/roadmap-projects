@@ -1,20 +1,35 @@
 import supabase from "@/utils/supabase";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 /*
 curl -X GET "http://localhost:3000/api/posts?id=1"
 */
 async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const id = searchParams.get("id");
+  const term = searchParams.get("term");
 
-  const getPostQuery = supabase.from("posts").select().eq("id", id);
-  const { data, error } = await getPostQuery;
+  const getPostQuery = supabase.from("posts").select();
+  const response = await getPostQuery;
 
-  // TODO: handle error
+  if (response.error) {
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
 
-  // TODO: return data
-  return Response.json({ message: "sucess" });
+  let posts = response.data;
+  if (term) {
+    posts = posts.filter((post) => {
+      return (
+        post.title.includes(term) ||
+        post.content.includes(term) ||
+        post.tags.some((tag: string) => tag.includes(term))
+      );
+    });
+  }
+
+  return Response.json({ message: "sucess", data: posts });
 }
 
 /*
