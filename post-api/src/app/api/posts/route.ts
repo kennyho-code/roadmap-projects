@@ -48,15 +48,18 @@ async function POST(request: Request) {
   const body = await request.json();
   const { title, content, category, tags } = body;
 
-  const { data, error } = await supabase
+  const response = await supabase
     .from("posts")
     .insert({ title, content, category, tags })
     .select();
 
-  // TODO: do something with data
-
-  // TODO: handle error
-  return Response.json({ message: "sucess" });
+  if (response.error) {
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+  return Response.json({ message: "sucess", data: response.data });
 }
 
 /*
@@ -70,22 +73,21 @@ curl -X PUT "http://localhost:3000/api/posts" \
 
 async function PUT(request: Request) {
   const body = await request.json();
-  // only allow to update title for now
-  const { id, title: newTitle } = body;
+  const { id, title, content, category, tags } = body;
 
-  console.log("newTitle", newTitle);
-
-  const { data, error } = await supabase
+  const response = await supabase
     .from("posts")
-    .update({ title: newTitle })
+    .update({ title, content, category, tags })
     .eq("id", id)
     .select();
 
-  // TODO: do something with error
-  console.log("data: ", data);
-
-  // TODO: handle error
-  return Response.json({ message: "sucess" });
+  if (response.error) {
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+  return Response.json({ message: "success", data: response.data });
 }
 
 /*
@@ -96,18 +98,16 @@ async function DELETE(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get("id");
 
-  const { data, error } = await supabase
-    .from("posts")
-    .delete()
-    .eq("id", id)
-    .select();
+  const response = await supabase.from("posts").delete().eq("id", id).select();
 
-  // TODO: do something with data
-  console.log("data: ", data);
+  if (response.error) {
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
 
-  // TODO: handle error;
-
-  return Response.json({ message: "sucess" });
+  return Response.json({ message: "sucess", data: response.data });
 }
 
 export { GET, POST, PUT, DELETE };
