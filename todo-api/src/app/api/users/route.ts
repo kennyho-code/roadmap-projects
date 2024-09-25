@@ -2,11 +2,15 @@ import supabase from "@/utils/supabase";
 import bcrypt from "bcrypt";
 import { NextRequest, NextResponse } from "next/server";
 
+/*
+In production, we wouldn't even allow these endpoints to be public, this would be private..... straightforward
+way....is to do Row Level Security...and have actions to call this on the client....
+*/
 async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const params = url.searchParams;
   const id = params.get("id");
-  const userQuery = supabase.from("users").select();
+  const userQuery = supabase.from("users").select().eq("id", id);
   const { data, error } = await userQuery;
   if (error) {
     return NextResponse.json({ message: "An error occured" }, { status: 500 });

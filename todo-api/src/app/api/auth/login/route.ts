@@ -1,6 +1,7 @@
 import supabase from "@/utils/supabase";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcrypt";
+import { encrypt } from "@/utils/session";
 
 async function POST(request: NextRequest) {
   const body = await request.json();
@@ -8,7 +9,7 @@ async function POST(request: NextRequest) {
 
   const userQuery = supabase
     .from("users")
-    .select("password_hash")
+    .select(`id, password_hash`)
     .eq("email", email)
     .single();
 
@@ -21,16 +22,17 @@ async function POST(request: NextRequest) {
   }
 
   const passwordHash = data.password_hash;
+  const userId = data.id;
 
   const isValid = await bcrypt.compare(password, passwordHash);
 
   if (isValid) {
-    return NextResponse.json({ message: "Correct Password!" });
+    // Create session
+    const token = await encrypt({ userId });
+    return NextResponse.json({ message: "Correct Password!", token });
   } else {
     return NextResponse.json({ message: "Invalid Password" }, { status: 401 });
   }
-
-  return NextResponse.json({ message: "success" });
 }
 
 export { POST };
