@@ -12,7 +12,34 @@ async function getUserId(request: NextRequest) {
 }
 
 async function GET(request: NextRequest) {
+  const params = new URL(request.url).searchParams;
+  const page = params.get("page");
+  const limit = params.get("limit");
+
   const userId = await getUserId(request);
+
+  if (page && limit) {
+    const offset = (Number(page) - 1) * Number(limit);
+    const take = offset + Number(limit) - 1;
+    const tasksQuery = supabase
+      .from("tasks")
+      .select()
+      .eq("user_id", userId)
+      .range(offset, take);
+    const { data: paginatedData, error } = await tasksQuery;
+
+    if (error) {
+      return NextResponse.json({ message: "Server Error" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      message: "success",
+      data: paginatedData,
+      page,
+      limit,
+      total: paginatedData.length,
+    });
+  }
 
   const tasksQuery = supabase.from("tasks").select().eq("user_id", userId);
   const { data, error } = await tasksQuery;
