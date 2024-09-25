@@ -44,7 +44,16 @@ async function POST(request: NextRequest) {
 
 async function PUT(request: NextRequest) {
   const { id, title, description } = await request.json();
+  const userId = await getUserId(request);
 
+  const tasksQuery = supabase.from("tasks").select().eq("id", id).single();
+  const { data: getTaskData, error: getTaskError } = await tasksQuery;
+  if (getTaskError) {
+    return NextResponse.json({ message: "Server Error" }, { status: 500 });
+  }
+  if (getTaskData.user_id !== userId) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
   const taskUpdateQuery = supabase
     .from("tasks")
     .update({ title, description })
@@ -62,6 +71,16 @@ async function PUT(request: NextRequest) {
 async function DELETE(request: NextRequest) {
   const { id } = await request.json();
   const userId = await getUserId(request);
+
+  const tasksQuery = supabase.from("tasks").select().eq("id", id).single();
+  const { data: getTaskData, error: getTaskError } = await tasksQuery;
+  if (getTaskError) {
+    return NextResponse.json({ message: "Server Error" }, { status: 500 });
+  }
+  if (getTaskData.user_id !== userId) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
+
   const deleteTaskQuery = supabase
     .from("tasks")
     .delete()
