@@ -53,15 +53,28 @@ async function PUT(request: NextRequest) {
 
   const { data, error } = await taskUpdateQuery;
   if (error) {
-    console.log(error);
     return NextResponse.json({ message: "Server Error" }, { status: 500 });
   }
 
   return NextResponse.json({ message: "success", data });
 }
 
-async function DELETE() {
-  return NextResponse.json({ message: "success" });
+async function DELETE(request: NextRequest) {
+  const { id } = await request.json();
+  const userId = await getUserId(request);
+  const deleteTaskQuery = supabase
+    .from("tasks")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select();
+  const { data, error } = await deleteTaskQuery;
+
+  if (error) {
+    return NextResponse.json({ message: "Server Error" }, { status: 500 });
+  }
+
+  return NextResponse.json({ message: "success", data });
 }
 
 export { GET, POST, PUT, DELETE };
