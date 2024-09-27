@@ -3,6 +3,8 @@
 const http = require("node:http");
 const https = require("node:https");
 
+const cache = new Map();
+
 function bootupServer(port, url) {
   const server = http.createServer((clientReq, clientRes) => {
     const hostname = new URL(url).hostname;
@@ -13,12 +15,40 @@ function bootupServer(port, url) {
       method: clientReq.method,
     };
 
-    const proxyReq = https.request(options, (proxyRes) => {
-      clientRes.writeHead(proxyRes.statusCode, proxyRes.headers);
-      proxyRes.pipe(clientRes, { end: true });
-    });
+    const key = hostname + clientReq.url;
 
-    clientReq.pipe(proxyReq, { end: true });
+    if (cache.has(key)) {
+      console.log("HIT CACHED!");
+      const cachedResponse = cache.get(key);
+      clientRes.writeHead(cachedResponse.statusCode, {
+        ...cachedResponse.headers,
+        "X-Cache": "HIT",
+      });
+
+      clientRes.end(cachedResponse.body);
+    } else {
+      const proxyReq = https.request(options, (proxyRes) => {
+        clientRes.writeHead(proxyRes.statusCode, {
+          ...proxyRes.headers,
+          "X-Cache": "MISS",
+        });
+        let body = "";
+        proxyRes.on("data", (chunk) => {
+          body += chunk;
+        });
+
+        proxyRes.on("end", () => {
+          cache.set(key, {
+            statusCode: proxyRes.statusCode,
+            headers: { ...proxyRes.headers },
+            body: body,
+          });
+
+          clientRes.end(body);
+        });
+      });
+      clientReq.pipe(proxyReq, { end: true });
+    }
   });
 
   server.listen(port, () => {
