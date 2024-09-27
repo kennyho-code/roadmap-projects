@@ -18,7 +18,6 @@ function bootupServer(port, url) {
     const key = hostname + clientReq.url;
 
     if (cache.has(key)) {
-      console.log("HIT CACHED!");
       const cachedResponse = cache.get(key);
       clientRes.writeHead(cachedResponse.statusCode, {
         ...cachedResponse.headers,
