@@ -1,66 +1,67 @@
 #!/usr/bin/env node
 import { WebSocket, WebSocketServer } from "ws";
-import http from "node:http";
 import readline from "node:readline";
 
 const PORT = 3000;
 
-const clients = [];
-
 function createServer() {
-  // const server = http.createServer((req, res) => {
-  //   res.writeHead(200, { "Content-Type": "text/plain" });
-  //   res.end("Websocket server running");
-  // });
-  //
-  const connections = new Map();
-
   const wss = new WebSocketServer({
     port: PORT,
   });
 
+  console.log("Created Web Socket Server on port: " + PORT);
+
   wss.on("connection", function connection(ws, request, client) {
     // Initial Connection
     const clientId = Date.now().toString();
-    connections.set(clientId, ws);
-    console.log(`connection from client: ${clientId} `);
+    console.log(`Connection from client: ${clientId} `);
 
     // Attach message event listener to this specific client connection
-    ws.on("message", function message(data) {
-      console.log(`Received message ${data} from client ${clientId}`);
+    ws.on("message", function message(data, isBinary) {
+      wss.clients.forEach(function each(client) {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+          client.send(data, { binary: isBinary });
+        }
+      });
     });
 
-    // Send a welcome message to the client
-    ws.send("Welcome to the server!");
+    ws.on("close", function close() {
+      console.log(`client: ${clientId} disconnected`);
+    });
   });
 }
 
 async function createClient() {
   const serverUrl = `ws://localhost:${PORT}`;
   const wsClient = new WebSocket(serverUrl);
-  wsClient.on("open", function () {
-    console.log(`connected to ws server: ${serverUrl}`);
-  });
+  wsClient.on("open", async function () {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  function askQuestion(query) {
-    return new Promise((resolve) => rl.question(query, resolve));
-  }
-
-  while (true) {
-    const message = await askQuestion("type a message: ");
-    console.log("message was: ", message);
-    if (wsClient.readyState === WebSocket.OPEN) {
-      wsClient.send(message);
-      console.log("Sent to server: " + message);
-    } else {
-      console.log("Connection is not open. Message not sent.");
+    function askQuestion(query) {
+      return new Promise((resolve) => rl.question(query, resolve));
     }
-  }
+
+    while (true) {
+      const message = await askQuestion("Enter a Message: ");
+      if (wsClient.readyState === WebSocket.OPEN) {
+        wsClient.send(message);
+      } else {
+        console.log("Connection is not open. Message not sent.");
+      }
+    }
+  });
+
+  wsClient.on("message", function message(data) {
+    console.log("\nBroadcasted Message: %s\n", data);
+  });
+
+  wsClient.on("close", function close() {
+    console.log("Server Error: Disconnected");
+    process.exit(0);
+  });
 }
 
 (function main() {
@@ -69,13 +70,11 @@ async function createClient() {
 
   switch (command) {
     case "start": {
-      console.log("connect to server");
       createServer();
       break;
     }
 
     case "connect": {
-      console.log("connect to client");
       createClient();
       break;
     }
