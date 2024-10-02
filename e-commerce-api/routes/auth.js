@@ -18,7 +18,7 @@ router.post("/login", async function (req, res) {
     throw error;
   }
 
-  const { password_hash } = data;
+  const { password_hash, id: userId } = data;
 
   const isValid = bcrypt.compareSync(password, password_hash);
   if (!isValid) {
@@ -28,7 +28,7 @@ router.post("/login", async function (req, res) {
     });
   }
 
-  const token = await encrypt({ email });
+  const token = await encrypt({ userId });
   res.status(200).json({ token });
 });
 
