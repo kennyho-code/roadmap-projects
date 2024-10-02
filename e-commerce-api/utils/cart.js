@@ -1,3 +1,5 @@
+// TODO: would use something like REDIS
+
 const carts = new Map();
 
 function addToCart(userId, productId, quantity) {
@@ -7,7 +9,6 @@ function addToCart(userId, productId, quantity) {
 
   const userCart = carts.get(userId);
   userCart.set(productId, (userCart.get(productId) || 0) + quantity);
-  console.log("userCart: ", userCart);
   return userCart;
 }
 

@@ -132,6 +132,9 @@ async function processCheckout(userId) {
   const shippingCost = calculateShippingCost();
   const order = createOrder(totalPrice, shippingInfo, shippingCost);
 
+  // TODO: this needs a more robust data model: Orders, Shipping, UserInfo
+  return order;
+
   // createOrder
 }
 

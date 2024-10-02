@@ -16,7 +16,7 @@ router.delete("/", function (req, res) {
 });
 
 router.put("/", function (req, res) {
-  res.send("User Poss");
+  res.send("User Put");
 });
 
 router.get("/overview", async function (req, res) {
@@ -51,6 +51,7 @@ router.post("/create-checkout-session", async function (req, res) {
   });
 
   res.redirect(303, session.url);
+  // we can call this....then redirect on the frontend depending on the users intent
 });
 
 export default router;
