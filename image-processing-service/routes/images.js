@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import supabase from "../utils/supabase.js";
+import sharp from "sharp";
 
 const router = express.Router();
 
@@ -37,8 +38,6 @@ router.post(/^(.+)\/transform$/, async (req, res) => {
   const transformOptions = req.body;
   console.log("filePath: ", filePath);
 
-  // only for pro plan
-  // Just download the image
   const { data, error } = await supabase.storage
     .from("images")
     .download(filePath);
@@ -51,13 +50,13 @@ router.post(/^(.+)\/transform$/, async (req, res) => {
   const buffer = await data.arrayBuffer();
   const fileBuffer = Buffer.from(buffer);
 
-  console.log("fileBuffer: ", fileBuffer);
+  const transformedImageBuffer = await sharp(fileBuffer)
+    .resize(transformOptions.transform.width, transformOptions.transform.height)
+    .toBuffer();
 
-  // const imageBuffer = await imageResponse.buffer();
-
-  // console.log("imageBuffer: ", imageBuffer);
-
-  res.json({ message: "transformed image" });
+  res.setHeader("Content-Type", data.type);
+  res.setHeader("Content-Disposition", `attachment; file="${filePath}"`);
+  res.send(transformedImageBuffer);
 });
 
 router.get("/:filePath", async (req, res) => {
