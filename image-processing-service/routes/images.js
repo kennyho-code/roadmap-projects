@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import supabase from "../utils/supabase.js";
+import { Queue } from "bullmq";
 import sharp from "sharp";
 
 const router = express.Router();
@@ -8,6 +9,20 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+const imageQueue = new Queue("imageQueue", {
+  connection: {
+    host: "127.0.0.1",
+    port: 6379,
+  },
+});
+
+/*
+
+curl -X POST http://localhost:3000/api/images/upload \
+-H "Authorization: Bearer token here" \
+-H "Content-Type: multipart/form-data" \
+-F "image=@/Users/kennyho/Dev/roadmap-projects/image-processing-service/images/test.jpg"
+*/
 router.post("/upload", upload.single("image"), async (req, res) => {
   if (!req.file) {
     return res.status(400).send("No file uploaded");
@@ -36,27 +51,32 @@ router.post("/upload", upload.single("image"), async (req, res) => {
 router.post(/^(.+)\/transform$/, async (req, res) => {
   const filePath = req.params[0].slice(1);
   const transformOptions = req.body;
+
   console.log("filePath: ", filePath);
 
-  const { data, error } = await supabase.storage
-    .from("images")
-    .download(filePath);
+  try {
+    const { data, error } = await supabase.storage
+      .from("images")
+      .createSignedUrl(filePath, 60);
 
-  if (error) {
-    console.log(error);
-    throw error;
+    if (error) {
+      return res.status(500).json({ error: "Failed to create signed URL" });
+    }
+
+    const signedUrl = data.signedUrl;
+    console.log("signedUrl:", signedUrl);
+
+    await imageQueue.add("transform", {
+      signedUrl,
+      transformOptions,
+      filePath,
+    });
+
+    res.json({ message: "Image processing task added to the queue" });
+  } catch (error) {
+    console.error("Error adding task to the queue:", error);
+    res.status(500).json({ error: "Failed to add task to the queue" });
   }
-
-  const buffer = await data.arrayBuffer();
-  const fileBuffer = Buffer.from(buffer);
-
-  const transformedImageBuffer = await sharp(fileBuffer)
-    .resize(transformOptions.transform.width, transformOptions.transform.height)
-    .toBuffer();
-
-  res.setHeader("Content-Type", data.type);
-  res.setHeader("Content-Disposition", `attachment; file="${filePath}"`);
-  res.send(transformedImageBuffer);
 });
 
 router.get("/:filePath", async (req, res) => {
